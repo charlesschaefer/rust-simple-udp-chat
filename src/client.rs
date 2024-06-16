@@ -1,4 +1,4 @@
-use std::{io::{self, BufRead}, net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket}};
+use std::{io::{self, BufRead}, net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket}, sync::{Arc, Mutex}, thread};
 
 const MAX_DATAGRAM_SIZE: usize = 65535;
 
@@ -24,30 +24,40 @@ impl Client {
         Client { socket, server_address }
     }
 
-    pub fn receive(&self) {
+    pub fn receive(this: Arc<Mutex<Self>>) {
         // tries to read something the user typed first
         // TODO: change this to work with threads
+        let that = this.clone();
+        let handle = thread::spawn(move || {
+            loop {
+                
+                let mut buffer = vec![0;MAX_DATAGRAM_SIZE];
+                let rec_bytes = this.lock().expect("Cant lock this variable").socket.recv(&mut buffer).expect("No message received");
+                
+                println!("{rec_bytes} bytes received: ");
 
-        let mut msg_line = String::new();
-        io::stdin().lock().read_line(&mut msg_line).unwrap();
-        self.send(msg_line);
+                let buffer = &mut buffer[..rec_bytes];
+                let msg = String::from_utf8(buffer.to_vec()).unwrap();
+                
+                println!("  {msg}");
+            }
+        });
         
-        
-        loop {
-            let mut buffer = vec![0;MAX_DATAGRAM_SIZE];
-            let rec_bytes = self.socket.recv(&mut buffer).expect("No message received");
-            
-            println!("{rec_bytes} bytes received: ");
+        let handle2 = thread::spawn(move || {
+            loop {
+                println!("Please, insert a message:");
+                let mut msg_line = String::new();
+                io::stdin().lock().read_line(&mut msg_line).unwrap();
+                that.lock().expect("Can't lock that variable").send(msg_line);
+            }
+        });
 
-            let buffer = &mut buffer[..rec_bytes];
-            let msg = String::from_utf8(buffer.to_vec()).unwrap();
-            
-            println!("  {msg}");
-
-        }
+        handle.join();
+        handle2.join();
     }
 
     pub fn send(&self, msg: String) {
+        println!("Foi");
         //let msg = "Uma mensagem em uma garrafa".as_bytes();
         let sent = self.socket.send(msg.as_bytes()).unwrap();
 

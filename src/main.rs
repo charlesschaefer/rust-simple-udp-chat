@@ -1,4 +1,4 @@
-use std::{env, process};
+use std::{env, process, sync::{Arc, Mutex}};
 use server::Server;
 use client::Client;
 
@@ -20,7 +20,7 @@ fn main() {
         server.receive();
     } else if module_type == "client" {
         let mut client = Client::new("localhost".to_string(), 2222);
-        client.receive();
+        Client::receive(Arc::new(Mutex::new(client)));
     }
 }
 
