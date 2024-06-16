@@ -45,7 +45,7 @@ impl Server {
             
             println!("{rec_bytes} bytes received");
 
-            let buffer = &mut buffer[..rec_bytes];
+            let buffer = &mut buffer[..rec_bytes-1];
             let msg = String::from_utf8(buffer.to_vec()).unwrap();
 
             self._add_client(source);

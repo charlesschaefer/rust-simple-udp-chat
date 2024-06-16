@@ -37,11 +37,12 @@ impl Client {
             let mut buffer = vec![0;MAX_DATAGRAM_SIZE];
             let rec_bytes = self.socket.recv(&mut buffer).expect("No message received");
             
-            println!("{rec_bytes} of a Message received: ");
+            println!("{rec_bytes} bytes received: ");
 
             let buffer = &mut buffer[..rec_bytes];
             let msg = String::from_utf8(buffer.to_vec()).unwrap();
-            println!("{msg}");
+            
+            println!("  {msg}");
 
         }
     }
