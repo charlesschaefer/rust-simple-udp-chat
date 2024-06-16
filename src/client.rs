@@ -27,9 +27,9 @@ impl Client {
     pub fn receive(&self) {
         // tries to read something the user typed first
         // TODO: change this to work with threads
+
         let mut msg_line = String::new();
         io::stdin().lock().read_line(&mut msg_line).unwrap();
-        println!("MSG_LINE ============>{msg_line}<===========");
         self.send(msg_line);
         
         

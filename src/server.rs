@@ -13,10 +13,11 @@ impl Client {
     }
 
     pub fn get_id_from_address(address: SocketAddr) -> String {
-        format!("{:?}:{:?}", 
+        let (host, port) = (
             address.ip().to_string(),
             address.port().to_string()
-        )
+        );
+        format!("{host}:{port}")
     }
 }
 pub struct Server {
@@ -36,13 +37,13 @@ impl Server {
     pub fn receive(&mut self) {
         loop {
             let mut buffer = vec![0;MAX_DATAGRAM_SIZE];
-             let (rec_bytes, source) = self
+            let (rec_bytes, source) = self
                 .socket
                 .recv_from(&mut buffer)
                 .expect("No message received"); 
             // let rec_bytes = self.socket.recv(&mut buffer).expect("No message received");
             
-            println!("{rec_bytes} of a Message received: ");
+            println!("{rec_bytes} bytes received");
 
             let buffer = &mut buffer[..rec_bytes];
             let msg = String::from_utf8(buffer.to_vec()).unwrap();
@@ -54,19 +55,19 @@ impl Server {
     }
 
     pub fn send_received_message(&self, msg: String, source: SocketAddr) {
-        let new_message = format!(
-            "Message received from {:?}:{:?} => \"{:?}\"",
+        let (host, port) = (
             source.ip().to_string(),
-            source.port().to_string(),
-            msg
+            source.port().to_string()
         );
-        println!("Message being sent: {new_message}");
+        let new_message = format!("from {host}:{port} => \"{msg}\"");
+        println!("Message being sent:\n  {new_message}");
 
 
         for client in &self.clients {
             if client.id != Client::get_id_from_address(source) {
-                let _sent = self.socket.send_to(new_message.as_bytes(), client.address);
-                println!("Bytes sent to clients: {:?} bytes", _sent.unwrap());
+                let _sent = self.socket.send_to(new_message.as_bytes(), client.address).unwrap();
+
+                println!("{_sent} bytes sent");
             }
         }
     }
@@ -78,7 +79,8 @@ impl Server {
                 return;
             }
         }
-        println!("Adding the client {:?}", client.id);
+        let id = &client.id;
+        println!("Adding client {id}");
         self.clients.push(client);
     }
 
