@@ -1,6 +1,16 @@
 use std::{fmt::format, io::Read, net::{SocketAddr, UdpSocket}};
+use tokio::sync::{mpsc, mpsc::{Sender, Receiver}};
+
 
 const MAX_DATAGRAM_SIZE: usize = 65535;
+
+enum Command {
+    Send {
+        msg: String,
+        source: SocketAddr,
+    }
+}
+
 pub struct Client {
     id: String,
     address: SocketAddr
@@ -20,9 +30,12 @@ impl Client {
         format!("{host}:{port}")
     }
 }
+
+
 pub struct Server {
     clients: Vec<Client>,
     socket: UdpSocket,
+    channel: (Sender::<Command>, Receiver::<Command>),
 }
 
 impl Server {
@@ -31,10 +44,33 @@ impl Server {
 
         let clients: Vec<Client> = vec![];
 
-        Server { clients, socket }
+        let channel = mpsc::channel(32);
+
+        Server { clients, socket, channel }
     }
 
-    pub fn receive(&mut self) {
+    pub async fn start(&mut self) {
+        let that = self.clone();
+        let manager_task = tokio::spawn(async move {
+            // Start receiving messages from the channel
+            while let Some(cmd) = self.channel.1.recv().await {
+                match cmd {
+                    Command::Send { msg, source } => {
+                        self.send_received_message(msg, source);
+                    },
+                }
+            }
+        };
+
+        let receive_task = tokio::spawn(async move {
+            that.receive();
+        });
+
+        receive_task.await.unwrap();
+        manager_task.await.unwrap();
+    }
+
+    pub async fn receive(&mut self) {
         loop {
             let mut buffer = vec![0;MAX_DATAGRAM_SIZE];
             let (rec_bytes, source) = self
@@ -42,7 +78,6 @@ impl Server {
                 .recv_from(&mut buffer)
                 .expect("No message received"); 
             // let rec_bytes = self.socket.recv(&mut buffer).expect("No message received");
-            
             println!("{rec_bytes} bytes received");
 
             let buffer = &mut buffer[..rec_bytes-1];
@@ -50,7 +85,12 @@ impl Server {
 
             self._add_client(source);
 
-            self.send_received_message(msg, source);
+            let envelop = Command::Send { msg, source };
+            self.channel.0.send(envelop).await.unwrap();
+
+            // tokio::spawn(async move {
+            //     self.send_received_message(msg, source);
+            // });
         }
     }
 
