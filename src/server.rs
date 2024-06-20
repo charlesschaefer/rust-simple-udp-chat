@@ -60,7 +60,7 @@ impl Server {
                     },
                 }
             }
-        };
+        });
 
         let receive_task = tokio::spawn(async move {
             that.receive();
