@@ -5,7 +5,8 @@ use client::Client;
 mod server;
 mod client;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
@@ -18,7 +19,7 @@ fn main() {
     if module_type == "server" {
         /* let mut server = Server::new("localhost".to_string(), 2222);
         server.receive(); */
-        Server::start("localhost".to_string(), 2222);
+        Server::start("localhost".to_string(), 2222).await;
     } else if module_type == "client" {
         let mut client = Client::new("localhost".to_string(), 2222);
         Client::receive(Arc::new(Mutex::new(client)));

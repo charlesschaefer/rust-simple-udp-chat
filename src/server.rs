@@ -58,9 +58,10 @@ impl Server {
             let mut server3 = server3.lock().await;
             // Start receiving messages from the channel
             while let Some(cmd) = server3.channel.1.recv().await {
+                println!("A new channel::message() received - dispatching...");
                 match cmd {
                     Command::Send { msg, source } => {
-                        server3.send_received_message(msg, source);
+                        server3.send_received_message(msg, source).await;
                     },
                 }
             }
@@ -71,6 +72,7 @@ impl Server {
     }
 
     pub async fn receive(&mut self) {
+        println!("Starting to receive messages from clients");
         loop {
             let mut buffer = vec![0;MAX_DATAGRAM_SIZE];
             let (rec_bytes, source) = self
