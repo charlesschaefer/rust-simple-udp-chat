@@ -16,8 +16,9 @@ fn main() {
     let module_type = &args[1];
 
     if module_type == "server" {
-        let mut server = Server::new("localhost".to_string(), 2222);
-        server.receive();
+        /* let mut server = Server::new("localhost".to_string(), 2222);
+        server.receive(); */
+        Server::start("localhost".to_string(), 2222);
     } else if module_type == "client" {
         let mut client = Client::new("localhost".to_string(), 2222);
         Client::receive(Arc::new(Mutex::new(client)));

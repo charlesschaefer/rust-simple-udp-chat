@@ -1,5 +1,5 @@
-use std::{fmt::format, io::Read, net::{SocketAddr, UdpSocket}};
-use tokio::sync::{mpsc, mpsc::{Sender, Receiver}};
+use std::{net::{SocketAddr, UdpSocket}, sync::Arc};
+use tokio::sync::{mpsc, mpsc::{Sender, Receiver}, Mutex};
 
 
 const MAX_DATAGRAM_SIZE: usize = 65535;
@@ -31,43 +31,43 @@ impl Client {
     }
 }
 
-
 pub struct Server {
     clients: Vec<Client>,
     socket: UdpSocket,
     channel: (Sender::<Command>, Receiver::<Command>),
 }
 
+
 impl Server {
-    pub fn new(host: String, port: u16) -> Self {
+    pub async fn start(host: String, port: u16) {
         let socket = UdpSocket::bind((host, port)).unwrap();
 
         let clients: Vec<Client> = vec![];
 
         let channel = mpsc::channel(32);
 
-        Server { clients, socket, channel }
-    }
+        let server  = Server { clients, socket, channel };
+        let server2 = Arc::new(Mutex::new(server));
+        let server3 = server2.clone();
 
-    pub async fn start(&mut self) {
-        let that = self.clone();
-        let manager_task = tokio::spawn(async move {
+        let receive_task = tokio::spawn(async move {
+            server2.lock().await.receive().await;
+        });
+
+        let manage_task = tokio::spawn(async move {
+            let mut server3 = server3.lock().await;
             // Start receiving messages from the channel
-            while let Some(cmd) = self.channel.1.recv().await {
+            while let Some(cmd) = server3.channel.1.recv().await {
                 match cmd {
                     Command::Send { msg, source } => {
-                        self.send_received_message(msg, source);
+                        server3.send_received_message(msg, source);
                     },
                 }
             }
         });
-
-        let receive_task = tokio::spawn(async move {
-            that.receive();
-        });
-
+        
         receive_task.await.unwrap();
-        manager_task.await.unwrap();
+        manage_task.await.unwrap();
     }
 
     pub async fn receive(&mut self) {
@@ -83,18 +83,14 @@ impl Server {
             let buffer = &mut buffer[..rec_bytes-1];
             let msg = String::from_utf8(buffer.to_vec()).unwrap();
 
-            self._add_client(source);
+            self.add_client(source);
 
             let envelop = Command::Send { msg, source };
             self.channel.0.send(envelop).await.unwrap();
-
-            // tokio::spawn(async move {
-            //     self.send_received_message(msg, source);
-            // });
         }
     }
 
-    pub fn send_received_message(&self, msg: String, source: SocketAddr) {
+    pub async fn send_received_message(&self, msg: String, source: SocketAddr) {
         let (host, port) = (
             source.ip().to_string(),
             source.port().to_string()
@@ -112,7 +108,7 @@ impl Server {
         }
     }
 
-    fn _add_client(&mut self, client_addr: SocketAddr) {
+    pub fn add_client(&mut self, client_addr: SocketAddr) {
         let client = Client::new(client_addr);
         for cli in &self.clients {
             if cli.id == client.id {
