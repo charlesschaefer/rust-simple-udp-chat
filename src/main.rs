@@ -1,6 +1,6 @@
 use std::{env, process, sync::{Arc, Mutex}};
 use server::Server;
-use client::Client;
+use client::start_client;
 
 mod server;
 mod client;
@@ -21,8 +21,9 @@ async fn main() {
         server.receive(); */
         Server::start("localhost".to_string(), 2222).await;
     } else if module_type == "client" {
-        let mut client = Client::new("localhost".to_string(), 2222);
-        Client::receive(Arc::new(Mutex::new(client)));
+        /* let mut client = Client::new("localhost".to_string(), 2222);
+        client.await.start().await; */
+        start_client("localhost".to_string(), 2222);
     }
 }
 
