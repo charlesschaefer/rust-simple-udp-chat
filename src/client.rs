@@ -20,7 +20,7 @@ enum Command {
 
 type Responder<T> = oneshot::Sender<Result<T, Box<dyn Error + Send + Sync>>>;
 
-pub async fn start(server_addr: String, server_port: usize) {
+pub async fn start_client(server_addr: String, server_port: usize) {
     let server_address:SocketAddr = format!("{server_addr}:{server_port}").to_socket_addrs()
         .expect("Unable to resolve domain")
         .next()

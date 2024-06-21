@@ -23,7 +23,7 @@ async fn main() {
     } else if module_type == "client" {
         /* let mut client = Client::new("localhost".to_string(), 2222);
         client.await.start().await; */
-        start_client("localhost".to_string(), 2222);
+        start_client("localhost".to_string(), 2222).await;
     }
 }
 
